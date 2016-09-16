@@ -38,9 +38,29 @@ static void get_dist_start() {
 static void get_dist_info() {
   s_dist_count = (int)health_service_sum_today(HealthMetricWalkedDistanceMeters);
 
+  int prev_dist = s_last_dist - s_dist_start;
+  int new_dist = s_dist_count - s_dist_start;
+
   time_t now = time(NULL);
-  time_t delta = now - s_last_update;
-  cm_per_sec = delta > 10 ? 0 : (100 * (s_dist_count - s_last_dist) / delta);
+
+  if (prev_dist < s_dist_goal && new_dist >= s_dist_goal) {
+    static const uint32_t const segments[] = {
+        200, 100, 400, 800, 
+        200, 100, 400, 800, 
+        200, 100, 400, 800, 
+        200, 100, 400
+    };
+    VibePattern pat = {
+        .durations = segments,
+        .num_segments = ARRAY_LENGTH(segments),
+    };
+    vibes_enqueue_custom_pattern(pat);
+    vibes_enqueue_custom_pattern(pat);
+    vibes_enqueue_custom_pattern(pat);
+    vibes_enqueue_custom_pattern(pat);
+  } else if (prev_dist / 1000 < new_dist / 1000) {
+    vibes_double_pulse();
+  }
   
   s_last_update = now;
   s_last_dist = s_dist_count;
@@ -147,6 +167,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   s_dist_goal += 50;
   display_distance(s_dist_goal);
   layer_mark_dirty(s_progress_layer);
+  vibes_cancel();
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) { 
@@ -157,12 +178,14 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   s_last_update = time(NULL);
   display_speed(cm_per_sec, SpeedTypeMpS);
   layer_mark_dirty(s_progress_layer);
+  vibes_cancel();
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) { 
   s_dist_goal -= 50;
   display_distance(s_dist_goal);
   layer_mark_dirty(s_progress_layer);
+  vibes_cancel();
 }
 
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
