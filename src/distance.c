@@ -164,11 +164,16 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
   display_distance(s_dist_goal);
   layer_mark_dirty(s_progress_layer);
 }
+
+static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
+  light_enable_interaction();
+}
   
 static void click_config_provider(void *context) {
   window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, up_click_handler);
   window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
   window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, down_click_handler);
+  window_single_click_subscribe(BUTTON_ID_BACK, back_click_handler);
 }
 
 static void window_load(Window *window) {
