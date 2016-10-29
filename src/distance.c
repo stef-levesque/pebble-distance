@@ -1,6 +1,7 @@
 #include <pebble.h>
 
 static Window *s_window;
+static StatusBarLayer *s_statusBar;
 static Layer *s_window_layer, *s_dots_layer, *s_progress_layer;
 static TextLayer *s_dist_layer, *s_speed_layer;
 
@@ -202,6 +203,10 @@ static void click_config_provider(void *context) {
 static void window_load(Window *window) {
   GRect window_bounds = layer_get_bounds(s_window_layer);
 
+  // Status bar
+  s_statusBar = status_bar_layer_create();
+  layer_add_child(s_window_layer, status_bar_layer_get_layer(s_statusBar));
+
   // Dots for the progress indicator
   s_dots_layer = layer_create(window_bounds);
   layer_set_update_proc(s_dots_layer, dots_layer_update_proc);
@@ -243,6 +248,8 @@ static void window_unload(Window *window) {
   layer_destroy(text_layer_get_layer(s_speed_layer));
   layer_destroy(s_dots_layer);
   layer_destroy(s_progress_layer);
+
+  status_bar_layer_destroy(s_statusBar);
 }
 
 void init() {
