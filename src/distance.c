@@ -8,8 +8,9 @@
 
 static Window *s_window;
 static StatusBarLayer *s_statusBar;
-static Layer *s_window_layer, *s_dots_layer, *s_progress_layer;
+static Layer *s_window_layer, *s_dots_layer, *s_progress_layer, *s_timechart_layer;
 static TextLayer *s_dist_layer, *s_speed_layer;
+static HealthMinuteData s_minuteData[60];
 
 static char s_current_dist_buffer[8], s_current_speed_buffer[16];
 static int s_dist_start = 0, s_dist_count = 0, s_dist_goal = 0;
@@ -123,7 +124,21 @@ static void health_handler(HealthEventType event, void *context) {
   }
 }
 
+static void update_timechart() {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "update_timechart");
+  time_t now = time(NULL);
+  time_t start = now - (60 * 60);
+  time_t end = now - 60;
+  uint num = health_service_get_minute_history(s_minuteData, 60, &start, &end);
+  layer_mark_dirty(s_timechart_layer);
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits changed) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler");
+  if (changed & MINUTE_UNIT) {
+    update_timechart();
+  }
+
   if (tick_time->tm_sec % 3) {
     time_t now = time(NULL);
     if (now - s_last_update > 10) {
@@ -161,6 +176,34 @@ static void progress_layer_update_proc(Layer *layer, GContext *ctx) {
     DEG_TO_TRIGANGLE(0),
     DEG_TO_TRIGANGLE(360 * dist / s_dist_goal));
 }
+
+static void timechart_layer_update_proc(Layer *layer, GContext *ctx) {
+  graphics_context_set_fill_color(ctx, GColorGreen);
+
+  GRect bb = layer_get_bounds(layer);
+
+  // Grid
+  graphics_context_set_stroke_color(ctx, GColorLightGray);
+  graphics_draw_rect(ctx, bb);
+  graphics_context_set_stroke_color(ctx, GColorDarkGray);
+  graphics_draw_line(ctx, GPoint(0, bb.size.h / 2), GPoint(bb.size.w, bb.size.h / 2));
+  graphics_draw_line(ctx, GPoint(30, 0), GPoint(30, bb.size.h));
+  graphics_draw_line(ctx, GPoint(60, 0), GPoint(60, bb.size.h));
+  graphics_draw_line(ctx, GPoint(90, 0), GPoint(90, bb.size.h));
+
+  for (int i=0; i < 60; ++i) {
+    HealthMinuteData m = s_minuteData[i];
+    if (m.is_invalid) {
+      continue;
+    }
+    uint steps = m.steps / 3;
+    graphics_context_set_fill_color(ctx, steps > 19 ? GColorGreen : GColorWhite);
+    GRect s;
+    s.origin = GPoint(i*2, 38 - steps);
+    s.size = GSize(1, steps);
+    graphics_fill_rect(ctx, s, 0, GCornerNone);
+  }
+  }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) { 
   s_dist_goal += 100;
@@ -235,6 +278,11 @@ static void window_load(Window *window) {
   text_layer_set_text_alignment(s_speed_layer, GTextAlignmentCenter);
   layer_add_child(s_window_layer, text_layer_get_layer(s_speed_layer));
 
+  // Time chart graph
+  s_timechart_layer = layer_create(GRect(18, 168-38, 120, 38));
+  layer_set_update_proc(s_timechart_layer, timechart_layer_update_proc);
+  layer_add_child(s_window_layer, s_timechart_layer);
+
   // Subscribe to health events if we can
   if(health_data_is_available()) {
     health_service_events_subscribe(health_handler, NULL);
@@ -246,6 +294,7 @@ static void window_unload(Window *window) {
   layer_destroy(text_layer_get_layer(s_speed_layer));
   layer_destroy(s_dots_layer);
   layer_destroy(s_progress_layer);
+  layer_destroy(s_timechart_layer);
 
   status_bar_layer_destroy(s_statusBar);
 }
@@ -263,7 +312,9 @@ void init() {
 
   window_stack_push(s_window, true);
 
-  tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+  update_timechart();
+
+  tick_timer_service_subscribe(MINUTE_UNIT | SECOND_UNIT, tick_handler);
 }
 
 void deinit() {}
