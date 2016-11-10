@@ -15,18 +15,15 @@ static char s_current_dist_buffer[8], s_current_speed_buffer[16];
 static int s_dist_start = 0, s_dist_count = 0, s_dist_goal = 0;
 
 typedef enum {
-  // Meters per Second
-  SpeedTypeMpS = 0,
   // Kilometers per Hour
-  SpeedTypeKpH,
+  SpeedTypeKpH = 0,
   // Minutes per Kilometer
   SpeedTypeMpK,
 
   SpeedTypeCount
 } SpeedType;
 
-static SpeedType s_speed_type = SpeedTypeMpS;
-static time_t s_last_update = 0;
+static SpeedType s_speed_type = SpeedTypeKpH;
 static int s_last_dist = 0;
 static int cm_per_sec = 0;
 
@@ -75,14 +72,6 @@ static void get_dist_info() {
 
 static void display_speed(int cm_p_s, SpeedType type) { 
   switch(type) {
-    case SpeedTypeMpS:
-    {
-      int m = cm_p_s / 100;
-      int cm = cm_p_s % 100;
-      snprintf(s_current_speed_buffer, sizeof(s_current_speed_buffer),
-        "%d,%02dm/s", m, cm);
-      break;
-    }
     case SpeedTypeKpH:
     {
       int m_p_h = cm_p_s * 36;
@@ -182,8 +171,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   get_dist_info();
   display_distance(s_dist_count - s_dist_start);
   cm_per_sec = 0;
-  s_last_update = time(NULL);
-  display_speed(cm_per_sec, SpeedTypeMpS);
+  display_speed(cm_per_sec, SpeedTypeKpH);
   layer_mark_dirty(s_progress_layer);
   vibes_cancel();
 }
