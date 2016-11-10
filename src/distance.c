@@ -1,5 +1,11 @@
 #include <pebble.h>
 
+//#define DEBUG_LOG
+#ifndef DEBUG_LOG
+#undef APP_LOG
+#define APP_LOG(level, fmt, args...) 
+#endif
+
 static Window *s_window;
 static StatusBarLayer *s_statusBar;
 static Layer *s_window_layer, *s_dots_layer, *s_progress_layer;
