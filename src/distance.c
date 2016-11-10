@@ -24,6 +24,7 @@ typedef enum {
 } SpeedType;
 
 static SpeedType s_speed_type = SpeedTypeKpH;
+static time_t s_first_update = 0, s_last_update = 0;
 static int s_last_dist = 0;
 static int cm_per_sec = 0;
 
@@ -46,6 +47,8 @@ static void get_dist_info() {
   int new_dist = s_dist_count - s_dist_start;
 
   time_t now = time(NULL);
+  time_t delta = now - s_first_update;
+  cm_per_sec = (new_dist * 100) / delta;
 
   if (prev_dist < s_dist_goal && new_dist >= s_dist_goal) {
     static const uint32_t const segments[] = {
@@ -171,6 +174,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   get_dist_info();
   display_distance(s_dist_count - s_dist_start);
   cm_per_sec = 0;
+  s_first_update = s_last_update = time(NULL);
   display_speed(cm_per_sec, SpeedTypeKpH);
   layer_mark_dirty(s_progress_layer);
   vibes_cancel();
