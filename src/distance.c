@@ -160,7 +160,7 @@ static void progress_layer_update_proc(Layer *layer, GContext *ctx) {
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) { 
-  s_dist_goal += 50;
+  s_dist_goal += 100;
   display_distance(s_dist_goal);
   layer_mark_dirty(s_progress_layer);
   vibes_cancel();
@@ -177,7 +177,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) { 
-  s_dist_goal -= 50;
+  s_dist_goal -= 100;
   display_distance(s_dist_goal);
   layer_mark_dirty(s_progress_layer);
   vibes_cancel();
