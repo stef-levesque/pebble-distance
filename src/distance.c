@@ -7,10 +7,9 @@
 #endif
 
 static Window *s_window;
-static StatusBarLayer *s_statusBar;
+static StatusBarLayer *s_status_bar;
 static Layer *s_window_layer, *s_dots_layer, *s_progress_layer, *s_timechart_layer;
-static TextLayer *s_dist_layer, *s_speed_layer;
-static HealthMinuteData s_minuteData[60];
+static HealthMinuteData s_minute_data[60];
 
 static char s_current_dist_buffer[8], s_current_speed_buffer[16];
 static int s_dist_start = 0, s_dist_count = 0, s_dist_goal = 0;
@@ -129,7 +128,8 @@ static void update_timechart() {
   time_t now = time(NULL);
   time_t start = now - (60 * 60);
   time_t end = now - 60;
-  uint num = health_service_get_minute_history(s_minuteData, 60, &start, &end);
+  uint num = health_service_get_minute_history(s_minute_data, 60, &start, &end);
+
   layer_mark_dirty(s_timechart_layer);
 }
 
@@ -192,7 +192,7 @@ static void timechart_layer_update_proc(Layer *layer, GContext *ctx) {
   graphics_draw_line(ctx, GPoint(90, 0), GPoint(90, bb.size.h));
 
   for (int i=0; i < 60; ++i) {
-    HealthMinuteData m = s_minuteData[i];
+    HealthMinuteData m = s_minute_data[i];
     if (m.is_invalid) {
       continue;
     }
@@ -245,8 +245,8 @@ static void window_load(Window *window) {
   GRect window_bounds = layer_get_bounds(s_window_layer);
 
   // Status bar
-  s_statusBar = status_bar_layer_create();
-  layer_add_child(s_window_layer, status_bar_layer_get_layer(s_statusBar));
+  s_status_bar = status_bar_layer_create();
+  layer_add_child(s_window_layer, status_bar_layer_get_layer(s_status_bar));
 
   // Dots for the progress indicator
   s_dots_layer = layer_create(window_bounds);
@@ -296,7 +296,7 @@ static void window_unload(Window *window) {
   layer_destroy(s_progress_layer);
   layer_destroy(s_timechart_layer);
 
-  status_bar_layer_destroy(s_statusBar);
+  status_bar_layer_destroy(s_status_bar);
 }
 
 void init() {
