@@ -155,9 +155,9 @@ static void dots_layer_update_proc(Layer *layer, GContext *ctx) {
   const GRect inset = grect_inset(layer_get_bounds(layer), GEdgeInsets(6));
 
   const int num_dots = 12;
-  for(int i = 0; i < num_dots; i++) {
+  for(int i = 0; i <= num_dots; i++) {
     GPoint pos = gpoint_from_polar(inset, GOvalScaleModeFitCircle,
-      DEG_TO_TRIGANGLE(i * 360 / num_dots));
+      DEG_TO_TRIGANGLE(i * 240 / num_dots - 120));
     graphics_context_set_fill_color(ctx, GColorDarkGray);
     graphics_fill_circle(ctx, pos, 2);
   }
@@ -167,14 +167,16 @@ static void progress_layer_update_proc(Layer *layer, GContext *ctx) {
   const GColor fillColor[6] = {GColorRed, GColorOrange, GColorChromeYellow, GColorYellow, GColorSpringBud, GColorGreen};
   const GRect inset = grect_inset(layer_get_bounds(layer), GEdgeInsets(2));
   int dist = (s_dist_count - s_dist_start);
+  bool goal_achieved = dist >= s_dist_goal;
 
   graphics_context_set_fill_color(ctx,
     dist >= s_dist_goal ? GColorBlue : 
     fillColor[6 * dist / s_dist_goal] );
 
   graphics_fill_radial(ctx, inset, GOvalScaleModeFitCircle, 12,
-    DEG_TO_TRIGANGLE(0),
-    DEG_TO_TRIGANGLE(360 * dist / s_dist_goal));
+    DEG_TO_TRIGANGLE(-120),
+    goal_achieved ? DEG_TO_TRIGANGLE(120) :
+    DEG_TO_TRIGANGLE(240 * dist / s_dist_goal - 120));
 }
 
 static void timechart_layer_update_proc(Layer *layer, GContext *ctx) {
