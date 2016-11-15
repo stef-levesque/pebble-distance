@@ -6,12 +6,15 @@
 #define APP_LOG(level, fmt, args...) 
 #endif
 
+#define TIMECHART_HEIGHT 38
+
 static Window *s_window;
 static StatusBarLayer *s_status_bar;
 static Layer *s_window_layer, *s_dots_layer, *s_progress_layer, *s_timechart_layer;
+static TextLayer *s_dist_layer, *s_speed_layer, *s_steps_layer;
 static HealthMinuteData s_minute_data[60];
 
-static char s_current_dist_buffer[8], s_current_speed_buffer[16];
+static char s_current_dist_buffer[8], s_current_speed_buffer[16], s_steps_buffer[4];
 static int s_dist_start = 0, s_dist_count = 0, s_dist_goal = 0;
 
 typedef enum {
@@ -26,6 +29,7 @@ typedef enum {
 static SpeedType s_speed_type = SpeedTypeKpH;
 static time_t s_first_update = 0, s_last_update = 0;
 static int s_last_dist = 0;
+static int s_max_step = 50;
 static int cm_per_sec = 0;
 
 // Is health data available?
@@ -130,6 +134,13 @@ static void update_timechart() {
   time_t end = now - 60;
   uint num = health_service_get_minute_history(s_minute_data, 60, &start, &end);
 
+  s_max_step = 50;
+  for (uint i=0; i<num; ++i) {
+    s_max_step = s_minute_data[i].steps > s_max_step ? s_minute_data[i].steps : s_max_step;
+  }
+  // Round up
+  s_max_step = ((s_max_step + 9) / 10) * 10;
+  
   layer_mark_dirty(s_timechart_layer);
 }
 
@@ -198,13 +209,17 @@ static void timechart_layer_update_proc(Layer *layer, GContext *ctx) {
     if (m.is_invalid) {
       continue;
     }
-    uint steps = m.steps / 3;
+    uint steps = TIMECHART_HEIGHT * m.steps / s_max_step;
     graphics_context_set_fill_color(ctx, steps > 19 ? GColorGreen : GColorWhite);
     GRect s;
-    s.origin = GPoint(i*2, 38 - steps);
+    s.origin = GPoint(i * 2, TIMECHART_HEIGHT - steps);
     s.size = GSize(1, steps);
     graphics_fill_rect(ctx, s, 0, GCornerNone);
   }
+
+  snprintf(s_steps_buffer, sizeof(s_steps_buffer), "%d", s_max_step);
+  text_layer_set_text(s_steps_layer, s_steps_buffer);
+
   }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) { 
@@ -262,7 +277,7 @@ static void window_load(Window *window) {
 
   // Create a layer to hold the current distance
   s_dist_layer = text_layer_create(
-      GRect(0, PBL_IF_ROUND_ELSE(82, 78), window_bounds.size.w, 38));
+      GRect(0, PBL_IF_ROUND_ELSE(82, 78), window_bounds.size.w, TIMECHART_HEIGHT));
   text_layer_set_text_color(s_dist_layer, GColorWhite);
   text_layer_set_background_color(s_dist_layer, GColorClear);
   text_layer_set_font(s_dist_layer,
@@ -272,7 +287,7 @@ static void window_load(Window *window) {
 
   // Create a layer to hold the current speed
   s_speed_layer = text_layer_create(
-      GRect(0, PBL_IF_ROUND_ELSE(58, 54), window_bounds.size.w, 38));
+      GRect(0, PBL_IF_ROUND_ELSE(58, 54), window_bounds.size.w, TIMECHART_HEIGHT));
   text_layer_set_text_color(s_speed_layer, GColorYellow);
   text_layer_set_background_color(s_speed_layer, GColorClear);
   text_layer_set_font(s_speed_layer,
@@ -281,9 +296,16 @@ static void window_load(Window *window) {
   layer_add_child(s_window_layer, text_layer_get_layer(s_speed_layer));
 
   // Time chart graph
-  s_timechart_layer = layer_create(GRect(18, 168-38, 120, 38));
+  s_timechart_layer = layer_create(GRect(18, 168 - TIMECHART_HEIGHT, 120, TIMECHART_HEIGHT));
   layer_set_update_proc(s_timechart_layer, timechart_layer_update_proc);
   layer_add_child(s_window_layer, s_timechart_layer);
+  s_steps_layer = text_layer_create(GRect(0, 125, 18, 14));
+  text_layer_set_text_color(s_steps_layer, GColorWhite);
+  text_layer_set_background_color(s_steps_layer, GColorClear);
+  text_layer_set_font(s_steps_layer,
+                      fonts_get_system_font(FONT_KEY_GOTHIC_14));
+  text_layer_set_text_alignment(s_steps_layer, GTextAlignmentRight);
+  layer_add_child(s_window_layer, text_layer_get_layer(s_steps_layer));
 
   // Subscribe to health events if we can
   if(health_data_is_available()) {
@@ -297,6 +319,7 @@ static void window_unload(Window *window) {
   layer_destroy(s_dots_layer);
   layer_destroy(s_progress_layer);
   layer_destroy(s_timechart_layer);
+  layer_destroy(text_layer_get_layer(s_steps_layer));
 
   status_bar_layer_destroy(s_status_bar);
 }
